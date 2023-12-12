@@ -50,14 +50,14 @@ def create_reservation(
         )
 
         message = (
-            f"Tak {available_room.name} je v {start_time_formatted} tvoje na {reservation_data.duration} minut. "
-            f"Prosím, v {end_time_formatted} prosím uvolni studovnu. Ať se daří!"
+            f"Tak {available_room.name} je v {start_time_formatted} tvoje/vaše na {reservation_data.duration} minut. "
+            f"\nProsím, v {end_time_formatted} prosím uvolni/uvolněte studovnu. Ať se daří!"
         )
         return {"result": "success", "message": message}
     else:
         return {
             "result": "failure",
-            "message": "Omlouváme se, ale v tuto chvíli není k dispozici žádná studovna, která by vyhovovala vašim požadavkům na kapacitu a čas. Zkuste to prosím později nebo upravte vaše požadavky.",
+            "message": "Omlouvám se, ale není k dispozici žádná studovna, která by vyhovovala požadavkům na kapacitu a čas.\nZkuste to prosím později nebo uprav požadavky.",
         }
 
 
