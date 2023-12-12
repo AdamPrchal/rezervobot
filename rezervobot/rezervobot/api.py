@@ -28,7 +28,6 @@ def create_reservation(
         minutes=reservation_data.start_in
     )
     duration_timedelta = timedelta(minutes=reservation_data.duration)
-    end_of_reservation = start_at + duration_timedelta
 
     available_room = find_available_room(
         reservation_data.required_capacity,
@@ -46,16 +45,19 @@ def create_reservation(
         reservation.save()
 
         start_time_formatted = start_at.strftime("%H:%M")
-        end_time_formatted = end_of_reservation.strftime("%H:%M")
+        end_time_formatted = (start_at + duration_timedelta).strftime(
+            "%H:%M"
+        )
 
         message = (
             f"Tak {available_room.name} je v {start_time_formatted} tvoje na {reservation_data.duration} minut. "
             f"Prosím, v {end_time_formatted} prosím uvolni studovnu. Ať se daří!"
         )
-        return {"message": message}
+        return {"result": "success", "message": message}
     else:
         return {
-            "message": "Omlouváme se, ale v tuto chvíli není k dispozici žádná studovna, která by vyhovovala vašim požadavkům na kapacitu a čas. Zkuste to prosím později nebo upravte vaše požadavky."
+            "result": "failure",
+            "message": "Omlouváme se, ale v tuto chvíli není k dispozici žádná studovna, která by vyhovovala vašim požadavkům na kapacitu a čas. Zkuste to prosím později nebo upravte vaše požadavky.",
         }
 
 
@@ -92,4 +94,13 @@ def list_available_study_rooms(
                     }
                 )
 
-    return available_rooms
+    if available_rooms:
+        return {
+            "result": "success",
+            "available_rooms": available_rooms,
+        }
+    else:
+        return {
+            "result": "failure",
+            "message": "Nebyly nalezeny žádné dostupné studovny odpovídající vašim požadavkům.",
+        }
