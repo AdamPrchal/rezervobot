@@ -8,7 +8,12 @@ class StudyRoomAdmin(admin.ModelAdmin):
 
 
 class ReservationAdmin(admin.ModelAdmin):
-    list_display = ["student_id", "study_room", "duration"]
+    list_display = [
+        "student_id",
+        "study_room",
+        "start_at",
+        "duration",
+    ]
 
 
 admin.site.register(StudyRoom, StudyRoomAdmin)
