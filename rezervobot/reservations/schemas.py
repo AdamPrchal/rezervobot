@@ -5,14 +5,13 @@ from pydantic import constr
 
 
 class ReservationCreateRequest(Schema):
-    start_at: datetime
-    duration: int
+    start_in: int  # Čas začátku rezervace v minutách od nynějška
+    duration: int  # Délka rezervace v minutách
     student_id: constr(max_length=8)
     required_capacity: int
 
-
 class AvailableRoomsRequest(Schema):
-    start_at: datetime
+    start_in: int  # Čas začátku rezervace v minutách od nynějška
     duration: int  # Délka rezervace v minutách
     required_capacity: int
 
