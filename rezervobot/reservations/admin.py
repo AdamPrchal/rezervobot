@@ -18,3 +18,5 @@ class ReservationAdmin(admin.ModelAdmin):
 
 admin.site.register(StudyRoom, StudyRoomAdmin)
 admin.site.register(Reservation, ReservationAdmin)
+
+admin.site.site_header = 'Rezervobot'
