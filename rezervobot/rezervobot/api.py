@@ -21,43 +21,75 @@ from datetime import datetime
 
 
 @api.post("/reservations/")
-def create_reservation(request, reservation_data: ReservationCreateRequest):
-    start_at = timezone.now() + timedelta(minutes=reservation_data.start_in)
+def create_reservation(
+    request, reservation_data: ReservationCreateRequest
+):
+    start_at = timezone.now() + timedelta(
+        minutes=reservation_data.start_in
+    )
     duration_timedelta = timedelta(minutes=reservation_data.duration)
+    end_of_reservation = start_at + duration_timedelta
 
-    available_room = find_available_room(reservation_data.required_capacity, start_at, duration_timedelta)
+    available_room = find_available_room(
+        reservation_data.required_capacity,
+        start_at,
+        duration_timedelta,
+    )
 
     if available_room:
         reservation = Reservation(
             start_at=start_at,
             duration=duration_timedelta,
             student_id=reservation_data.student_id,
-            study_room=available_room
+            study_room=available_room,
         )
         reservation.save()
-        return {"message": f"Reservation created successfully in room {available_room.name}"}
-    else:
-        raise HttpError(400, "No available room with the required capacity")
 
+        start_time_formatted = start_at.strftime("%H:%M")
+        end_time_formatted = end_of_reservation.strftime("%H:%M")
+
+        message = (
+            f"Tak {available_room.name} je v {start_time_formatted} tvoje na {reservation_data.duration} minut. "
+            f"Prosím, v {end_time_formatted} prosím uvolni studovnu. Ať se daří!"
+        )
+        return {"message": message}
+    else:
+        return {
+            "message": "Omlouváme se, ale v tuto chvíli není k dispozici žádná studovna, která by vyhovovala vašim požadavkům na kapacitu a čas. Zkuste to prosím později nebo upravte vaše požadavky."
+        }
 
 
 @api.post("/study-rooms/available/")
-def list_available_study_rooms(request, room_request: AvailableRoomsRequest):
-    start_at = timezone.now() + timedelta(minutes=room_request.start_in)
+def list_available_study_rooms(
+    request, room_request: AvailableRoomsRequest
+):
+    start_at = timezone.now() + timedelta(
+        minutes=room_request.start_in
+    )
     duration_timedelta = timedelta(minutes=room_request.duration)
     available_rooms = []
 
-    for room in StudyRoom.objects.filter(capacity__gte=room_request.required_capacity):
+    for room in StudyRoom.objects.filter(
+        capacity__gte=room_request.required_capacity
+    ):
         if is_room_available(room.id, start_at, duration_timedelta):
-            next_available_time, available_duration = calculate_availability(room, start_at)
-            
-            if next_available_time <= start_at and available_duration >= duration_timedelta:
-                available_rooms.append({
-                    "id": room.id,
-                    "name": room.name,
-                    "capacity": room.capacity,
-                    "next_available_time": next_available_time,
-                    "available_duration": available_duration
-                })
+            (
+                next_available_time,
+                available_duration,
+            ) = calculate_availability(room, start_at)
+
+            if (
+                next_available_time <= start_at
+                and available_duration >= duration_timedelta
+            ):
+                available_rooms.append(
+                    {
+                        "id": room.id,
+                        "name": room.name,
+                        "capacity": room.capacity,
+                        "next_available_time": next_available_time,
+                        "available_duration": available_duration,
+                    }
+                )
 
     return available_rooms
