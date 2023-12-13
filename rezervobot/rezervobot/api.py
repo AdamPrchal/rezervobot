@@ -86,9 +86,13 @@ def get_next_available_time(
             )
 
     if earliest_available_time_in_minutes is not None:
-        return {"start_in": earliest_available_time_in_minutes}
+        return {
+            "start_in": earliest_available_time_in_minutes,
+            "result": "success",
+        }
     else:
         return {
             "start_in": None,
             "message": "Nejsou dostupná žádná okna v požadovaném časovém rozsahu.",
+            "result": "failure",
         }
