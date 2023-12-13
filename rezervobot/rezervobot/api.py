@@ -1,23 +1,16 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from django.utils import timezone
 from ninja import NinjaAPI
 from ninja.errors import HttpError
 from reservations.models import Reservation, StudyRoom
-from reservations.schemas import (
-    AvailableRoomsRequest,
-    ReservationCreateRequest,
-    StudyRoomResponse,
-)
+from reservations.schemas import ReservationCreateRequest
 from reservations.utils import (
-    calculate_availability,
     find_available_room,
-    is_room_available,
+    find_next_available_time,
 )
 
 api = NinjaAPI(title="Rezervobot API")
-
-from datetime import datetime
 
 
 @api.post("/reservations/")
@@ -44,10 +37,12 @@ def create_reservation(
         )
         reservation.save()
 
-        start_time_formatted = start_at.strftime("%H:%M")
-        end_time_formatted = (start_at + duration_timedelta).strftime(
+        start_time_formatted = timezone.localtime(start_at).strftime(
             "%H:%M"
         )
+        end_time_formatted = timezone.localtime(
+            start_at + duration_timedelta
+        ).strftime("%H:%M")
 
         message = (
             f"Tak {available_room.name} je v {start_time_formatted} tvoje/vaše na {reservation_data.duration} minut. "
@@ -61,46 +56,39 @@ def create_reservation(
         }
 
 
-@api.post("/study-rooms/available/")
-def list_available_study_rooms(
-    request, room_request: AvailableRoomsRequest
+@api.post("/next-available-time/")
+def get_next_available_time(
+    request, reservation_data: ReservationCreateRequest
 ):
-    start_at = timezone.now() + timedelta(
-        minutes=room_request.start_in
+    # Vypočítáme 'start_at' od aktuálního času plus 'start_in'
+    start_in_from_now = timezone.now() + timedelta(
+        minutes=reservation_data.start_in
     )
-    duration_timedelta = timedelta(minutes=room_request.duration)
-    available_rooms = []
+    duration_timedelta = timedelta(minutes=reservation_data.duration)
 
+    # Prohledáme každou studovnu pro nalezení nejbližšího volného času
+    earliest_available_time_in_minutes = None
     for room in StudyRoom.objects.filter(
-        capacity__gte=room_request.required_capacity
+        capacity__gte=reservation_data.required_capacity
     ):
-        if is_room_available(room.id, start_at, duration_timedelta):
-            (
-                next_available_time,
-                available_duration,
-            ) = calculate_availability(room, start_at)
+        available_time_in_minutes = find_next_available_time(
+            room.id,
+            reservation_data.duration,
+            reservation_data.start_in,
+        )
+        if (
+            earliest_available_time_in_minutes is None
+            or available_time_in_minutes
+            < earliest_available_time_in_minutes
+        ):
+            earliest_available_time_in_minutes = (
+                available_time_in_minutes
+            )
 
-            if (
-                next_available_time <= start_at
-                and available_duration >= duration_timedelta
-            ):
-                available_rooms.append(
-                    {
-                        "id": room.id,
-                        "name": room.name,
-                        "capacity": room.capacity,
-                        "next_available_time": next_available_time,
-                        "available_duration": available_duration,
-                    }
-                )
-
-    if available_rooms:
-        return {
-            "result": "success",
-            "available_rooms": available_rooms,
-        }
+    if earliest_available_time_in_minutes is not None:
+        return {"start_in": earliest_available_time_in_minutes}
     else:
         return {
-            "result": "failure",
-            "message": "Nebyly nalezeny žádné dostupné studovny odpovídající vašim požadavkům.",
+            "start_in": None,
+            "message": "Nejsou dostupná žádná okna v požadovaném časovém rozsahu.",
         }
